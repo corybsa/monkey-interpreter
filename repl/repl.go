@@ -4,27 +4,27 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"monkey-interpreter/lexer"
-	"monkey-interpreter/token"
+	"monkey/lexer"
+	"monkey/token"
 )
 
 const PROMPT = ">> "
 
 func Start(in io.Reader, out io.Writer) {
-	scanner := bufio.NewScanner(in)
+	var scanner *bufio.Scanner = bufio.NewScanner(in)
 
 	for {
 		fmt.Fprintf(out, PROMPT)
-		scanned := scanner.Scan()
+		var scanned bool = scanner.Scan()
 
 		if !scanned {
 			return
 		}
 
-		line := scanner.Text()
-		l := lexer.New(line)
+		var line string = scanner.Text()
+		var lexer *lexer.Lexer = lexer.New(line)
 
-		for tok := l.NextToken(); tok.Type != token.EOF; tok = l.NextToken() {
+		for tok := lexer.NextToken(); tok.Type != token.EOF; tok = lexer.NextToken() {
 			fmt.Fprintf(out, "%+v\n", tok)
 		}
 	}

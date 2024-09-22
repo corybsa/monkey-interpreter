@@ -1,12 +1,12 @@
 package lexer
 
 import (
-	"monkey-interpreter/token"
+	"monkey/token"
 	"testing"
 )
 
 func TestNextToken(t *testing.T) {
-	input := `let five = 5;
+	var input = `let five = 5;
 	let ten = 10;
 
 	let add = fn(x, y) {
@@ -107,17 +107,17 @@ func TestNextToken(t *testing.T) {
 		{token.EOF, ""},
 	}
 
-	l := New(input)
+	var lexer *Lexer = New(input)
 
 	for i, tt := range tests {
-		tok := l.NextToken()
+		var token = lexer.NextToken()
 
-		if tok.Type != tt.expectedType {
-			t.Fatalf("tests[%d] - token type wrong. expected=%q, got=%q", i, tt.expectedType, tok.Type)
+		if token.Type != tt.expectedType {
+			t.Fatalf("tests[%d] - token type wrong. expected=%q, got=%q", i, tt.expectedType, token.Type)
 		}
 
-		if tok.Literal != tt.expectedLiteral {
-			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q", i, tt.expectedLiteral, tok.Literal)
+		if token.Literal != tt.expectedLiteral {
+			t.Fatalf("tests[%d] - literal wrong. expected=%q, got=%q", i, tt.expectedLiteral, token.Literal)
 		}
 	}
 }

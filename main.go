@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
-	"monkey-interpreter/repl"
+	"monkey/repl"
 	"os"
 	"os/user"
 )
 
 func main() {
-	user, err := user.Current()
+	var user, err = user.Current()
 
 	if err != nil {
 		panic(err)
