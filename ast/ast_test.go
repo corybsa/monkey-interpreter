@@ -6,7 +6,7 @@ import (
 )
 
 func TestString(t *testing.T) {
-	var program = &Program{
+	program := &Program{
 		Statements: []Statement{
 			&LetStatement{
 				Token: token.Token{Type: token.LET, Literal: "let"},

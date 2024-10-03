@@ -8,109 +8,119 @@ import (
 )
 
 type Parser struct {
-	lexer     *lexer.Lexer
-	curToken  token.Token
-	peekToken token.Token
-	errors    []string
+	lexer          *lexer.Lexer
+	curToken       token.Token
+	peekToken      token.Token
+	errors         []string
+	prefixParseFns map[token.TokenType]prefixParseFn
+	infixParseFns  map[token.TokenType]infixParseFn
 }
 
-func (parser *Parser) nextToken() {
-	parser.curToken = parser.peekToken
-	parser.peekToken = parser.lexer.NextToken()
+func (p *Parser) nextToken() {
+	p.curToken = p.peekToken
+	p.peekToken = p.lexer.NextToken()
 }
 
-func (parser *Parser) ParseProgram() *ast.Program {
+func (p *Parser) ParseProgram() *ast.Program {
 	var program = &ast.Program{}
 	program.Statements = []ast.Statement{}
 
-	for parser.curToken.Type != token.EOF {
-		var statement ast.Statement = parser.parseStatement()
+	for p.curToken.Type != token.EOF {
+		var statement ast.Statement = p.parseStatement()
 
 		if statement != nil {
 			program.Statements = append(program.Statements, statement)
 		}
 
-		parser.nextToken()
+		p.nextToken()
 	}
 
 	return program
 }
 
-func (parser *Parser) parseStatement() ast.Statement {
-	switch parser.curToken.Type {
+func (p *Parser) parseStatement() ast.Statement {
+	switch p.curToken.Type {
 	case token.LET:
-		return parser.parseLetStatement()
+		return p.parseLetStatement()
 	case token.RETURN:
-		return parser.parseReturnStatement()
+		return p.parseReturnStatement()
 	default:
 		return nil
 	}
 }
 
-func (parser *Parser) parseLetStatement() *ast.LetStatement {
-	var statement = &ast.LetStatement{Token: parser.curToken}
+func (p *Parser) parseLetStatement() *ast.LetStatement {
+	var statement = &ast.LetStatement{Token: p.curToken}
 
-	if !parser.expectPeek(token.IDENT) {
+	if !p.expectPeek(token.IDENT) {
 		return nil
 	}
 
-	statement.Name = &ast.Identifier{Token: parser.curToken, Value: parser.curToken.Literal}
+	statement.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
-	if !parser.expectPeek(token.ASSIGN) {
+	if !p.expectPeek(token.ASSIGN) {
 		return nil
 	}
 
 	// TODO: we're skipping the expressions until we encounter a semicolon
-	for !parser.curTokenIs(token.SEMICOLON) {
-		parser.nextToken()
+	for !p.curTokenIs(token.SEMICOLON) {
+		p.nextToken()
 	}
 
 	return statement
 }
 
-func (parser *Parser) parseReturnStatement() *ast.ReturnStatement {
-	var statement = &ast.ReturnStatement{Token: parser.curToken}
+func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
+	var statement = &ast.ReturnStatement{Token: p.curToken}
 
-	parser.nextToken()
+	p.nextToken()
 
 	// TODO: we're skipping the expressions until we encounter a semicolon
-	for !parser.curTokenIs(token.SEMICOLON) {
-		parser.nextToken()
+	for !p.curTokenIs(token.SEMICOLON) {
+		p.nextToken()
 	}
 
 	return statement
 }
 
-func (parser *Parser) curTokenIs(t token.TokenType) bool {
-	return parser.curToken.Type == t
+func (p *Parser) curTokenIs(t token.TokenType) bool {
+	return p.curToken.Type == t
 }
 
-func (parser *Parser) peekTokenIs(t token.TokenType) bool {
-	return parser.peekToken.Type == t
+func (p *Parser) peekTokenIs(t token.TokenType) bool {
+	return p.peekToken.Type == t
 }
 
-func (parser *Parser) expectPeek(t token.TokenType) bool {
-	if parser.peekTokenIs(t) {
-		parser.nextToken()
+func (p *Parser) expectPeek(t token.TokenType) bool {
+	if p.peekTokenIs(t) {
+		p.nextToken()
 		return true
 	} else {
-		parser.peekError(t)
+		p.peekError(t)
 		return false
 	}
 }
 
-func (parser *Parser) Errors() []string {
-	return parser.errors
+func (p *Parser) Errors() []string {
+	return p.errors
 }
 
-func (parser *Parser) peekError(t token.TokenType) {
-	var message = fmt.Sprintf("expected next token to be %s, got %s instead", t, parser.peekToken.Type)
-	parser.errors = append(parser.errors, message)
+func (p *Parser) peekError(t token.TokenType) {
+	var message = fmt.Sprintf("expected next token to be %s, got %s instead", t, p.peekToken.Type)
+	p.errors = append(p.errors, message)
 }
 
-func New(lexer *lexer.Lexer) *Parser {
+func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
+	p.prefixParseFns[tokenType] = fn
+}
+
+func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
+	p.infixParseFns[tokenType] = fn
+}
+
+func New(l *lexer.Lexer) *Parser {
 	var parser = &Parser{
-		lexer:  lexer,
+		lexer:  l,
 		errors: []string{},
 	}
 
@@ -119,3 +129,8 @@ func New(lexer *lexer.Lexer) *Parser {
 	parser.nextToken()
 	return parser
 }
+
+type (
+	prefixParseFn func() ast.Expression
+	infixParseFn  func(ast.Expression) ast.Expression
+)
