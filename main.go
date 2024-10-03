@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	var user, err = user.Current()
+	user, err := user.Current()
 
 	if err != nil {
 		panic(err)
