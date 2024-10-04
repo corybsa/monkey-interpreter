@@ -5,6 +5,7 @@ import (
 	"monkey/ast"
 	"monkey/lexer"
 	"monkey/token"
+	"strconv"
 )
 
 const (
@@ -120,6 +121,20 @@ func (p *Parser) parseIdentifier() ast.Expression {
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
+func (p *Parser) parseIntegerLiteral() ast.Expression {
+	literal := &ast.IntegerLiteral{Token: p.curToken}
+	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
+
+	if err != nil {
+		message := fmt.Sprintf("could not parse %q as an integer", p.curToken.Literal)
+		p.errors = append(p.errors, message)
+		return nil
+	}
+
+	literal.Value = value
+	return literal
+}
+
 func (p *Parser) curTokenIs(t token.TokenType) bool {
 	return p.curToken.Type == t
 }
@@ -163,6 +178,7 @@ func New(l *lexer.Lexer) *Parser {
 
 	parser.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	parser.registerPrefix(token.IDENT, parser.parseIdentifier)
+	parser.registerPrefix(token.INT, parser.parseIntegerLiteral)
 
 	// read two tokens, so curToken and peekToken are both set
 	parser.nextToken()
