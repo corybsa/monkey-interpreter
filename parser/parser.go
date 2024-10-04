@@ -28,6 +28,17 @@ type Parser struct {
 	infixParseFns  map[token.TokenType]infixParseFn
 }
 
+var precedences = map[token.TokenType]int{
+	token.EQ:       EQUALS,
+	token.NOT_EQ:   EQUALS,
+	token.LT:       LESSGREATER,
+	token.GT:       LESSGREATER,
+	token.PLUS:     SUM,
+	token.MINUS:    SUM,
+	token.SLASH:    PRODUCT,
+	token.ASTERISK: PRODUCT,
+}
+
 func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
 	p.peekToken = p.lexer.NextToken()
@@ -120,6 +131,18 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 	}
 
 	leftExp := prefix()
+
+	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
+		infix := p.infixParseFns[p.peekToken.Type]
+
+		if infix == nil {
+			return leftExp
+		}
+
+		p.nextToken()
+		leftExp = infix(leftExp)
+	}
+
 	return leftExp
 }
 
@@ -152,6 +175,19 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	return expression
 }
 
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	expression := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left,
+	}
+
+	precedence := p.curPrecedence()
+	p.nextToken()
+	expression.Right = p.parseExpression(precedence)
+	return expression
+}
+
 func (p *Parser) curTokenIs(t token.TokenType) bool {
 	return p.curToken.Type == t
 }
@@ -179,6 +215,22 @@ func (p *Parser) peekError(t token.TokenType) {
 	p.errors = append(p.errors, message)
 }
 
+func (p *Parser) peekPrecedence() int {
+	if p, ok := precedences[p.peekToken.Type]; ok {
+		return p
+	}
+
+	return LOWEST
+}
+
+func (p *Parser) curPrecedence() int {
+	if p, ok := precedences[p.curToken.Type]; ok {
+		return p
+	}
+
+	return LOWEST
+}
+
 func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
 	p.prefixParseFns[tokenType] = fn
 }
@@ -198,6 +250,16 @@ func New(l *lexer.Lexer) *Parser {
 	parser.registerPrefix(token.INT, parser.parseIntegerLiteral)
 	parser.registerPrefix(token.BANG, parser.parsePrefixExpression)
 	parser.registerPrefix(token.MINUS, parser.parsePrefixExpression)
+
+	parser.infixParseFns = make(map[token.TokenType]infixParseFn)
+	parser.registerInfix(token.PLUS, parser.parseInfixExpression)
+	parser.registerInfix(token.MINUS, parser.parseInfixExpression)
+	parser.registerInfix(token.SLASH, parser.parseInfixExpression)
+	parser.registerInfix(token.ASTERISK, parser.parseInfixExpression)
+	parser.registerInfix(token.EQ, parser.parseInfixExpression)
+	parser.registerInfix(token.NOT_EQ, parser.parseInfixExpression)
+	parser.registerInfix(token.LT, parser.parseInfixExpression)
+	parser.registerInfix(token.GT, parser.parseInfixExpression)
 
 	// read two tokens, so curToken and peekToken are both set
 	parser.nextToken()
